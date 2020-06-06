@@ -5,21 +5,40 @@
 
 import UIKit
 import MapKit
+import Firebase
 
-class ViewController: UIViewController, MKMapViewDelegate {
+class ViewController: UIViewController, MKMapViewDelegate, SecondViewControllerDelegate {
     @IBOutlet weak var mapView: MKMapView!
     
+    var ref: DatabaseReference!
+    
     let locationManager = CLLocationManager()
-    let regionInMeters: Double = 10000
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
+        ref = Database.database().reference()
         loadLocationPoints()
         checkLocationServices()
+        loadLocationPointsFromDatabase()
+        ref.child("Points").child("test").setValue(["Latitude":0.00,"Longitude":0.00])
     }
     
-    
+    func loadLocationPointsFromDatabase() {
+        ref.child("Points").observe(.value){
+            snapshot in let coordinateDict = snapshot.value as? [String: AnyObject] ?? [:]
+            var latitude: Double
+            var longitude: Double
+            for annotation in coordinateDict {
+                latitude = annotation.value.object(forKey: "Latitude") as! Double
+                longitude = annotation.value.object(forKey: "Longitude") as! Double
+                let point = MKPointAnnotation()
+                point.coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+                self.mapView.addAnnotation(point)
+            }            
+        }
+        
+    }
     
     func loadLocationPoints() {
         
@@ -101,6 +120,12 @@ class ViewController: UIViewController, MKMapViewDelegate {
     func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
         if let coordinate = view.annotation?.coordinate {
             drawRoute(to: coordinate)
+        }
+    }
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if let vc = segue.destination as? SecondViewController {
+            vc.delegate = self
         }
     }
 }
